@@ -222,8 +222,13 @@ class ModelData(object):
         model_loading_start_time = time.time()
         print("Loading DOPE model '{}'...".format(path))
         net = DopeNetwork()
-        net = torch.nn.DataParallel(net, [0]).cuda()
-        net.load_state_dict(torch.load(path))
+        net = torch.nn.DataParallel(net, [0])
+        if torch.cuda.is_available():
+            net = net.cuda()
+            device = torch.device('cuda')
+        else:
+            device = torch.device('cpu')
+        net.load_state_dict(torch.load(path,  map_location=device))
         net.eval()
         print('    Model loaded in {} seconds.'.format(
             time.time() - model_loading_start_time))
@@ -247,7 +252,12 @@ class ObjectDetector(object):
 
         # Run network inference
         image_tensor = transform(in_img)
-        image_torch = Variable(image_tensor).cuda().unsqueeze(0)
+        image_torch = Variable(image_tensor)
+        # image_torch = Variable(image_tensor).cuda().unsqueeze(0)
+        if torch.cuda.is_available():
+            image_torch = image_torch.cuda().unsqueeze(0)
+        else:
+            image_torch = image_torch.cpu().unsqueeze(0)
         out, seg = net_model(image_torch)
         vertex2 = out[-1][0]
         aff = seg[-1][0]
